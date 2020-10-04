@@ -1,9 +1,7 @@
 #include <Windows.h>
-#include <iostream>
 #include <string>
 #include <vector>
 #include <regex>
-
 #include "detours.h"
 #pragma comment(lib, "detours.lib")
 
@@ -29,7 +27,7 @@ int countSubstring(const std::string& strString, const std::string& strSub)
 std::string replaceString(std::string const strSource,std::string const strPattern)
 {
 	std::string strResult = strSource;
-	std::regex re("(?:...)+" + strPattern + "(?:...)+");
+	std::regex re(".*" + strPattern + ".*");
 	std::smatch matches;
 	std::regex_match(strSource, matches, re);
 
@@ -41,13 +39,11 @@ std::string replaceString(std::string const strSource,std::string const strPatte
 	return strResult;
 }
 
-
 void EquipTooltipString(void* iAddressOfString, int32_t a2, int32_t a3)
 {
-
+	char* chOriginalString = (char*)iAddressOfString;
 	std::string strTooltip((char*)iAddressOfString);
 	std::string strLineTerminator = "#n";
-	char* chOriginalString = (char*)iAddressOfString;
 
 	if (countSubstring(strTooltip, strLineTerminator) > m_nMaxLines)
 	{
@@ -59,7 +55,7 @@ void EquipTooltipString(void* iAddressOfString, int32_t a2, int32_t a3)
 				break;
 			}
 		}
-		if (countSubstring(strTooltip, strLineTerminator) > 1000000)
+		if (countSubstring(strTooltip, strLineTerminator) > m_nMaxLines) //Not a Weapon huh
 		{
 			while(countSubstring(strTooltip, strLineTerminator) > m_nMaxLines) //Possible Loop Trap
 			{
@@ -68,8 +64,9 @@ void EquipTooltipString(void* iAddressOfString, int32_t a2, int32_t a3)
 		}
 
 		const char* chReplaceString = strTooltip.c_str();
-		strcpy_s(chOriginalString, strlen(chOriginalString) + 100, chReplaceString);
+		strcpy_s(chOriginalString, strlen(chOriginalString), chReplaceString);
 	}
+
 	func originals0 = (func)iAddressOfEquipTooltipCreator;
 	originals0(iAddressOfString,a2,a3);
 	return;
@@ -81,7 +78,7 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpReserved)
 	{
 		m_vRegexPattern.push_back("Power of .+?#n(.+?)#1");					//Moon Sun Orb enchantment
 		m_vRegexPattern.push_back("Explosive Blow .+?#n(.+?)#8#n");			//Explosive Blow
-		m_vRegexPattern.push_back("(?:...)[\\S\\s]+(#n.+?)#n");				//Last Line - Has to be last for it to work!
+		m_vRegexPattern.push_back("#n(.+)#n");								//Last Line - Has to be last for it to work!
 
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
@@ -92,11 +89,9 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpReserved)
 	}
 	else if (dwReason == DLL_PROCESS_DETACH)
 	{
-		// unhook
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
 
-		// this will hook the function
 		DetourDetach(&(LPVOID&)iAddressOfEquipTooltipCreator, &EquipTooltipString);
 
 		DetourTransactionCommit();
