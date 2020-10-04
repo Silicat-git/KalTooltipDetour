@@ -27,7 +27,7 @@ int countSubstring(const std::string& strString, const std::string& strSub)
 std::string replaceString(std::string const strSource,std::string const strPattern)
 {
 	std::string strResult = strSource;
-	std::regex re(".*" + strPattern + ".*");
+	std::regex re(".*" + strPattern + ".*"); //Need to match full String.
 	std::smatch matches;
 	std::regex_match(strSource, matches, re);
 
@@ -59,12 +59,15 @@ void EquipTooltipString(void* iAddressOfString, int32_t a2, int32_t a3)
 		{
 			while(countSubstring(strTooltip, strLineTerminator) > m_nMaxLines) //Possible Loop Trap
 			{
-				strTooltip = replaceString(strTooltip, m_vRegexPattern.back());
+				strTooltip = replaceString(strTooltip, "#n(.+)#n"); //Removes last Line
 			}
 		}
 
 		const char* chReplaceString = strTooltip.c_str();
-		strcpy_s(chOriginalString, strlen(chOriginalString), chReplaceString);
+		if (strlen(chReplaceString) <= strlen(chOriginalString)) //Only make changes if our new String is smaller... otherwise Buffer exception may hit
+		{
+			strcpy_s(chOriginalString, strlen(chOriginalString), chReplaceString); 
+		}
 	}
 
 	func originals0 = (func)iAddressOfEquipTooltipCreator;
@@ -78,7 +81,6 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpReserved)
 	{
 		m_vRegexPattern.push_back("Power of .+?#n(.+?)#1");					//Moon Sun Orb enchantment
 		m_vRegexPattern.push_back("Explosive Blow .+?#n(.+?)#8#n");			//Explosive Blow
-		m_vRegexPattern.push_back("#n(.+)#n");								//Last Line - Has to be last for it to work!
 
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
